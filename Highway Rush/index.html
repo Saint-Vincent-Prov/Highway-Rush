@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Highway Rush</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  canvas{display:block;width:100vw;height:100vh}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:2}
+  #game{position:fixed;inset:0}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,8,20,.45);z-index:5}
+  .overlay.hidden{display:none}
+  .panel{color:#eef;text-align:center;padding:26px 30px 24px;max-width:min(500px,86vw);background:rgba(12,15,30,.86);
+    border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  h1{margin:0 0 4px;font-size:clamp(32px,7vw,56px);letter-spacing:.04em;font-style:italic;font-weight:900;line-height:1.05;
+    background:linear-gradient(180deg,#ffe08a,#ff6a3d);-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{margin:0 0 10px;font-size:clamp(28px,6vw,44px);font-style:italic;font-weight:900;color:#ff5a4a;letter-spacing:.04em}
+  p{margin:6px 0;color:#c8cbe0;font-size:15px;line-height:1.45}
+  .keys{display:grid;grid-template-columns:auto auto;gap:6px 14px;justify-content:center;margin:14px 0 4px;font-size:14px;color:#c8cbe0;text-align:left}
+  kbd{display:inline-block;min-width:18px;padding:2px 6px;border-radius:5px;background:#262a40;border:1px solid #3a3f5c;color:#fff;font:600 12px system-ui;text-align:center}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+  .stat{background:rgba(255,255,255,.05);border-radius:10px;padding:8px}
+  .stat b{display:block;font-size:22px;color:#fff}
+  .stat span{font-size:12px;color:#9aa0c0;text-transform:uppercase;letter-spacing:.08em}
+  button.big{margin-top:16px;padding:13px 34px;font:800 18px system-ui;letter-spacing:.06em;color:#1a0d00;border:0;border-radius:999px;cursor:pointer;
+    background:linear-gradient(180deg,#ffd36b,#ff8a3d);box-shadow:0 6px 20px rgba(255,140,60,.35)}
+  button.big:active{transform:translateY(1px)}
+  .hint{font-size:12px;color:#8a90b0;margin-top:10px}
+  #mute{position:fixed;top:10px;right:12px;z-index:6;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.2);
+    background:rgba(10,12,24,.6);color:#fff;font-size:17px;cursor:pointer}
+  #touch{position:fixed;inset:auto 0 0 0;height:0;z-index:4;display:none}
+  #touch.on{display:block}
+  .tbtn{position:fixed;bottom:max(18px,env(safe-area-inset-bottom));width:clamp(64px,17vw,92px);height:clamp(64px,17vw,92px);border-radius:50%;
+    border:2px solid rgba(255,255,255,.35);background:rgba(20,24,40,.45);color:#fff;font:800 22px system-ui;display:flex;align-items:center;justify-content:center;
+    touch-action:none}
+  .tbtn.down{background:rgba(255,160,60,.55)}
+  #tl{left:16px} #tr{right:16px} #tb{right:16px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(64px,17vw,92px) + 14px);font-size:14px}
+  .panel{max-height:90vh;overflow:auto;box-sizing:border-box}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  button.alt{background:linear-gradient(180deg,#6b7bff,#3a47c9);color:#fff;box-shadow:0 6px 20px rgba(80,100,255,.35)}
+  .wallet{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:rgba(255,200,60,.12);
+    border:1px solid rgba(255,200,60,.35);color:#ffd36b;font:800 18px system-ui}
+  .sel-line{font-size:13px;color:#9aa0c0;margin-top:8px}
+  .earn{margin:10px 0 2px;padding:10px;border-radius:12px;background:rgba(255,200,60,.08);border:1px solid rgba(255,200,60,.25)}
+  .earn b{font-size:28px;color:#ffd36b}
+  .earn small{display:block;color:#b8bcd6;font-size:12px;margin-top:4px}
+  .next{font-size:13px;color:#c8cbe0;margin-top:10px}
+  .next .bar{height:6px;border-radius:3px;background:#262a40;margin-top:5px;overflow:hidden}
+  .next .bar i{display:block;height:100%;background:linear-gradient(90deg,#ffd36b,#ff8a3d)}
+  .panel.shop{max-width:min(1000px,94vw);width:100%;padding:18px 20px}
+  .shophead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .shophead h2{margin:0;color:#ffd36b}
+  .tabs{display:flex;gap:8px;margin-bottom:12px}
+  .tab{flex:1;padding:10px;border-radius:10px;border:1px solid #3a3f5c;background:#1a1e33;color:#c8cbe0;font:700 15px system-ui;cursor:pointer}
+  .tab.on{background:#ffd36b;color:#1a0d00;border-color:#ffd36b}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px;text-align:left}
+  .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:6px}
+  .card.selected{border-color:#ffd36b;box-shadow:0 0 0 1px #ffd36b inset}
+  .card canvas{width:100%;height:auto;aspect-ratio:16/9;flex:0 0 auto;border-radius:9px;display:block;background:#111}
+  .card h3{margin:2px 0 0;font-size:16px;color:#fff}
+  .card .d{font-size:12px;color:#9aa0c0;min-height:30px;line-height:1.35}
+  .st{display:grid;grid-template-columns:62px 1fr;gap:4px 8px;align-items:center;font-size:11px;color:#9aa0c0}
+  .st .b{height:6px;background:#262a40;border-radius:3px;overflow:hidden}
+  .st .b i{display:block;height:100%;background:#5bd1ff}
+  .tagrow{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;padding:2px 7px;border-radius:999px;background:#262a40;color:#c8cbe0}
+  .tag.gold{background:rgba(255,200,60,.15);color:#ffd36b}
+  .card button{margin-top:auto;padding:9px;border-radius:10px;border:0;font:800 14px system-ui;cursor:pointer}
+  .card button.buy{background:linear-gradient(180deg,#ffd36b,#ff8a3d);color:#1a0d00}
+  .card button.pick{background:#3a47c9;color:#fff}
+  .card button:disabled{background:#262a40;color:#7a7f99;cursor:default}
+  .card .need{font-size:11px;color:#ff9a8a;text-align:center;margin-top:-2px}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<canvas id="hud"></canvas>
+<div id="loading" class="overlay"><div class="panel"><h1>HIGHWAY RUSH</h1><p id="loadMsg">Building the road…</p></div></div>
+<button id="mute" title="Sound (M)">🔊</button>
+
+<div id="menu" class="overlay hidden">
+  <div class="panel">
+    <h1>HIGHWAY RUSH</h1>
+    <p>You're behind the wheel. Weave through traffic as long as you can.<br>Watch for blinkers: other cars change lanes.</p>
+    <p style="color:#ffd36b">💰 The further you drive, the more every kilometre pays. Spend it in the Garage on faster cars and new roads.</p>
+    <div class="keys">
+      <span><kbd>↑</kbd> / <kbd>W</kbd></span><span>Accelerate</span>
+      <span><kbd>↓</kbd> / <kbd>S</kbd></span><span>Brake</span>
+      <span><kbd>←</kbd><kbd>→</kbd> / <kbd>A</kbd><kbd>D</kbd></span><span>Steer</span>
+      <span><kbd>P</kbd> · <kbd>M</kbd></span><span>Pause · Sound</span>
+    </div>
+    <p class="hint">On touch screens the car accelerates on its own. Use ◀ ▶ to steer and BRAKE to slow down.</p>
+    <div class="wallet" id="menuWallet" style="margin-top:12px">$ 0</div>
+    <p class="sel-line" id="menuSel"></p>
+    <div class="row"><button class="big" id="startBtn">START</button><button class="big alt" id="menuShopBtn">GARAGE</button></div>
+    <p class="hint" id="menuBest"></p>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel"><h2 style="color:#ffd36b">PAUSED</h2><button class="big" id="resumeBtn">RESUME</button></div>
+</div>
+
+<div id="over" class="overlay hidden">
+  <div class="panel">
+    <h2>CRASHED!</h2>
+    <div class="stats">
+      <div class="stat"><b id="oScore">0</b><span>Score</span></div>
+      <div class="stat"><b id="oBest">0</b><span>Best</span></div>
+      <div class="stat"><b id="oDist">0</b><span>Distance</span></div>
+      <div class="stat"><b id="oNear">0</b><span>Close calls</span></div>
+    </div>
+    <p id="oNew" style="color:#ffd36b;font-weight:700"></p>
+    <div class="earn"><b id="oEarn">+$0</b><small id="oEarnBreak"></small><small id="oWallet"></small></div>
+    <div class="next" id="oNext"></div>
+    <div class="row"><button class="big" id="restartBtn">DRIVE AGAIN</button><button class="big alt" id="overShopBtn">GARAGE</button></div>
+    <p class="hint">Enter / Space to restart · G for Garage</p>
+  </div>
+</div>
+
+<div id="shop" class="overlay hidden">
+  <div class="panel shop">
+    <div class="shophead"><h2>GARAGE</h2><div class="wallet" id="shopWallet">$ 0</div></div>
+    <div class="tabs"><button class="tab on" data-tab="cars">🚗 Cars</button><button class="tab" data-tab="roads">🛣️ Roads</button></div>
+    <div class="grid" id="shopGrid"></div>
+    <button class="big" id="shopBack">BACK</button>
+    <p class="hint" id="saveNote"></p>
+  </div>
+</div>
+
+<div id="touch">
+  <div class="tbtn" id="tl">◀</div>
+  <div class="tbtn" id="tr">▶</div>
+  <div class="tbtn" id="tb">BRAKE</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
